@@ -129,17 +129,17 @@ function local_wellbeing_coursemodule_edit_post_actions($moduleinfo, $course) {
     $metrics = optional_param_array('wellbeing_metrics', [], PARAM_TEXT);
 
     if (empty($metrics)) {
-        debugging("WELLBEING: No metrics selected", DEBUG_DEVELOPER);
+        // debugging("WELLBEING: No metrics selected", DEBUG_DEVELOPER);
         return $moduleinfo;
     }
 
-    $assignid = $moduleinfo->coursemodule;
+    $assignid = $moduleinfo->instance;
     $courseid = $course->id;
-
+    // debugging("WELLBEING MODULEINFO → " . json_encode($moduleinfo), DEBUG_DEVELOPER);
     // Convert metrics to JSON
     $metricsjson = json_encode(array_values($metrics));
 
-    debugging("WELLBEING JSON → " . $metricsjson, DEBUG_DEVELOPER);
+    // debugging("WELLBEING JSON → " . $metricsjson, DEBUG_DEVELOPER);
 
     // Check if record already exists
     $existing = $DB->get_record('local_wb_assign_metrics', [
@@ -167,7 +167,7 @@ function local_wellbeing_coursemodule_edit_post_actions($moduleinfo, $course) {
         $DB->insert_record('local_wb_assign_metrics', $record);
     }
 
-    debugging("WELLBEING: Metrics stored in JSON", DEBUG_DEVELOPER);
+    // debugging("WELLBEING: Metrics stored in JSON", DEBUG_DEVELOPER);
 
     return $moduleinfo;
 }

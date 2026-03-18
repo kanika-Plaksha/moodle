@@ -180,19 +180,26 @@ private static function call_gemini_api(string $text, int $assignid): array {
     -----------------------------------
     */
 
-    $assignmetrics = $DB->get_record(
-        'local_wb_assign_metrics',
-        ['assignid' => $cm->id],
-        '*',
-        IGNORE_MISSING
-    );
+    // $assignmetrics = $DB->get_record(
+    //     'local_wb_assign_metrics',
+    //     ['assignid' => $cm->id],
+    //     '*',
+    //     IGNORE_MISSING
+    // );
 
-    if (!$assignmetrics) {
-        debugging("WB ERROR: No metrics record found for assign {$cm->id}", DEBUG_DEVELOPER);
-        return [];
-    }
+    // if (!$assignmetrics) {
+    //     debugging("WB ERROR: No metrics record found for assign {$cm->id}", DEBUG_DEVELOPER);
+    //     return [];
+    // }
 
-    $metrics = json_decode($assignmetrics->metricname, true);
+    $raw = $courseconfig->metrics_name_json;
+
+    // Extract text inside <p> tags
+    preg_match_all('/<p[^>]*>(.*?)<\/p>/i', $raw, $matches);
+
+    $metrics = array_filter(array_map(function($item) {
+        return trim(strip_tags($item), " ,");
+    }, $matches[1]));
 
     if (!$metrics || !is_array($metrics)) {
         debugging("WB ERROR: Metrics JSON invalid", DEBUG_DEVELOPER);
@@ -387,12 +394,12 @@ private static function call_gemini_api(string $text, int $assignid): array {
 
         return $DB->get_records_sql($sql, [$courseid, $userid]);
     }
-    
-    public static function get_student_assignment_metrics($courseid, $userid) {
+public static function get_student_assignment_metrics_filtered($courseid, $userid) {
     global $DB;
 
     $sql = "
-        SELECT a.name,
+        SELECT a.id as assignid,
+               a.name,
                m.metrics
         FROM {local_wellbeing_metrics} m
         JOIN {assign_submission} s ON s.id = m.submissionid
@@ -401,38 +408,84 @@ private static function call_gemini_api(string $text, int $assignid): array {
           AND s.userid = ?
     ";
 
-        return $DB->get_records_sql($sql, [$courseid, $userid]);
+    $records = $DB->get_records_sql($sql, [$courseid, $userid]);
+
+    $result = [];
+
+    foreach ($records as $record) {
+
+        $rawmetrics = json_decode($record->metrics, true);
+
+        if (empty($rawmetrics)) {
+            continue;
+        }
+
+        /* ---------- FETCH SELECTED METRICS ---------- */
+        $assignmetrics = $DB->get_record(
+            'local_wb_assign_metrics',
+            ['assignid' => $record->assignid],
+            'metricname',
+            IGNORE_MISSING
+        );
+
+        if (empty($assignmetrics) || empty($assignmetrics->metricname)) {
+            continue;
+        }
+
+        /* ---------- DECODE SELECTED ---------- */
+        $selectedmetrics = json_decode($assignmetrics->metricname, true);
+
+        if (empty($selectedmetrics) || !is_array($selectedmetrics)) {
+            continue;
+        }
+
+        /* ---------- FILTER ---------- */
+        $filtered = [];
+
+        foreach ($selectedmetrics as $metric) {
+            $metric = trim($metric);
+            $filtered[$metric] = $rawmetrics[$metric] ?? 0;
+        }
+
+        /* ---------- STORE RESULT ---------- */
+        $result[] = [
+            'assignment' => $record->name,
+            'metrics' => $filtered
+        ];
     }
+
+    return $result;
+}
     
     public static function get_assignment_submission_overview($courseid) {
 
-global $DB;
+        global $DB;
 
-$totalstudents = count(get_enrolled_users(
-    context_course::instance($courseid),
-    'mod/assign:submit'
-));
+        $totalstudents = count(get_enrolled_users(
+            context_course::instance($courseid),
+            'mod/assign:submit'
+        ));
 
-$sql = "
-SELECT
-a.id,
-a.name AS assignment,
-COUNT(DISTINCT s.userid) AS submitted
-FROM {assign} a
-LEFT JOIN {assign_submission} s
-ON s.assignment = a.id
-AND s.status = 'submitted'
-WHERE a.course = :courseid
-GROUP BY a.id,a.name
-ORDER BY a.duedate
-";
+        $sql = "
+        SELECT
+        a.id,
+        a.name AS assignment,
+        COUNT(DISTINCT s.userid) AS submitted
+        FROM {assign} a
+        LEFT JOIN {assign_submission} s
+        ON s.assignment = a.id
+        AND s.status = 'submitted'
+        WHERE a.course = :courseid
+        GROUP BY a.id,a.name
+        ORDER BY a.duedate
+        ";
 
-$data = $DB->get_records_sql($sql,['courseid'=>$courseid]);
+        $data = $DB->get_records_sql($sql,['courseid'=>$courseid]);
 
-foreach ($data as $d) {
-    $d->totalstudents = $totalstudents;
-}
+        foreach ($data as $d) {
+            $d->totalstudents = $totalstudents;
+        }
 
-return $data;
-}
+        return $data;
+        }
 }

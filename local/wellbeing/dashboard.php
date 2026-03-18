@@ -1,5 +1,7 @@
 <?php
 
+use core_files\external\delete\draft;
+
 require('../../config.php');
 
 use local_wellbeing\service\analysis_service;
@@ -83,9 +85,9 @@ if ($percentage < 20) {
 -------------------------------------------------- */
 
 $progressdata = analysis_service::get_student_assignment_progress($courseid, $USER->id);
-
 $totalassignments = 0;
 $completed = 0;
+$draft = 0;
 
 if (!empty($progressdata)) {
 
@@ -94,6 +96,8 @@ if (!empty($progressdata)) {
     foreach ($progressdata as $item) {
         if ($item->status === 'submitted') {
             $completed++;
+        } else if ($item->status === 'draft') {
+            $draft++;
         }
     }
 }
@@ -101,6 +105,30 @@ if (!empty($progressdata)) {
 $completionpercentage = $totalassignments > 0
     ? round(($completed / $totalassignments) * 100)
     : 0;
+
+$draftpercentage = $totalassignments > 0
+    ? round(($draft / $totalassignments) * 100)
+    : 0;
+// $totalassignments = 0;
+// $completed = 0;
+// $draft= 0;
+
+// if (!empty($progressdata)) {
+
+//     $totalassignments = count($progressdata);
+
+//     foreach ($progressdata as $item) {
+//         if ($item->status === 'submitted') {
+//             $completed++;
+//         } else if ($item->status === 'draft') {
+//             $draft++;
+//         }
+//     }
+// }
+
+// $completionpercentage = $totalassignments > 0
+//     ? round(($completed / $totalassignments) * 100)
+//     : 0;
 
 
 /* --------------------------------------------------
@@ -180,15 +208,6 @@ $highestemotion = array_keys($totals, max($totals))[0];
 $lowestemotion  = array_keys($totals, min($totals))[0];
 
 echo html_writer::start_div('alert alert-light mt-4 text-start');
-
-echo "<strong>Trend Insight:</strong><br>";
-
-echo "• Strongest emotional factor: <strong>" . ucfirst(str_replace('_',' ',$highestemotion)) . "</strong><br>";
-
-echo "• Lowest emotional factor: <strong>" . ucfirst(str_replace('_',' ',$lowestemotion)) . "</strong><br>";
-
-echo "• Emotional balance index: <strong>$percentage%</strong>";
-
 echo html_writer::end_div();
 
 
@@ -264,26 +283,38 @@ echo html_writer::end_div();
 /* ASSIGNMENT COMPLETION CARD */
 
 if ($isstudent) {
+
 echo html_writer::start_div('col-md-6');
 
 echo html_writer::start_div('card p-4 shadow-sm text-center');
 
-echo html_writer::tag('h3', 'Assignment Completion Status');
+echo html_writer::tag('h3', 'Assignment Progress Overview');
 
 /* COLOR + ICON LOGIC */
 
-if ($completionpercentage < 40) {
-    $progresscolor = "#dc3545";
-    $icon = "🚩";
-} elseif ($completionpercentage < 70) {
-    $progresscolor = "#ffc107";
-    $icon = "📘";
-} else {
-    $progresscolor = "#28a745";
+if ($completionpercentage < 25) {
+    $progresscolor = "#dc3545"; // red
+    $icon = "🚀"; 
+    $label = "Getting Started";
+} elseif ($completionpercentage < 50) {
+    $progresscolor = "#fd7e14"; // orange
+    $icon = "📈";
+    $label = "Building Momentum";
+} elseif ($completionpercentage < 75) {
+    $progresscolor = "#ffc107"; // yellow
     $icon = "🎯";
+    $label = "Making Progress";
+} elseif ($completionpercentage < 100) {
+    $progresscolor = "#20c997"; // teal
+    $icon = "💪";
+    $label = "Almost There";
+} else {
+    $progresscolor = "#28a745"; // green
+    $icon = "🏆";
+    $label = "Completed";
 }
 
-/* CIRCULAR GAUGE */
+/* CIRCULAR GAUGE (Submitted %) */
 
 echo html_writer::start_div('', [
     'style' => "
@@ -304,71 +335,129 @@ echo $icon;
 
 echo html_writer::end_div();
 
-/* COMPLETION TEXT */
+/* MAIN TEXT */
 
 echo html_writer::tag(
     'h4',
-    "$completed / $totalassignments Completed"
+    "$completed Submitted • $draft Draft • $totalassignments Total"
 );
 
 echo html_writer::tag(
     'p',
-    "$completionpercentage% Progress",
-    ['style' => "font-weight:400;color:black;font-size:16px;"]
+    "$completionpercentage% Completed",
+    ['style' => "font-weight:500;color:black;font-size:16px;"]
 );
 
+/* PROGRESS BREAKDOWN BAR */
+
+echo html_writer::start_div('', [
+    'style' => "
+        width:100%;
+        height:12px;
+        border-radius:10px;
+        overflow:hidden;
+        display:flex;
+        margin-top:15px;
+        background:#e9ecef;
+    "
+]);
+
+// Submitted (Green)
+echo html_writer::div('', '', [
+    'style' => "width:{$completionpercentage}%; background:#28a745;"
+]);
+
+// Draft (Orange)
+echo html_writer::div('', '', [
+    'style' => "width:{$draftpercentage}%; background:#fd7e14;"
+]);
+
+echo html_writer::end_div();
+
+/* LEGEND */
+
+echo html_writer::start_div('d-flex justify-content-center mt-3', [
+    'style' => 'gap:20px; font-size:14px;'
+]);
+
+echo html_writer::tag('span', '🟢 Submitted', ['style' => 'color:#28a745;']);
+echo html_writer::tag('span', '🟠 Draft', ['style' => 'color:#fd7e14;']);
+echo html_writer::tag('span', '⚪ Remaining', ['style' => 'color:#6c757d;']);
+
+echo html_writer::end_div();
+
 echo html_writer::end_div(); // card
-echo html_writer::end_div(); // col-md-6
+echo html_writer::end_div(); // col
 
 echo html_writer::end_div(); // CLOSE ROW
-
 }
 /* --------------------------------------------------
    ROW 2 : ASSIGNMENT EMOTIONAL METRICS
 -------------------------------------------------- */
-
-$assignmentmetrics = analysis_service::get_student_assignment_metrics($courseid, $USER->id);
+$assignmentmetrics = analysis_service::get_student_assignment_metrics_filtered($courseid, $USER->id);
 
 if (!empty($assignmentmetrics)) {
 
-echo html_writer::start_div('row mt-4');
-echo html_writer::start_div('col-12');
+    echo html_writer::start_div('row mt-4');
+    echo html_writer::start_div('col-12');
 
-echo html_writer::start_div('card shadow-sm p-4');
+    echo html_writer::start_div('card shadow-sm p-4');
 
-echo html_writer::tag('h4', 'Assignment-wise Emotional Metrics');
+    echo html_writer::tag('h4', 'Assignment-wise Wellbeing Metrics');
 
-echo '<table class="table table-bordered table-sm">';
-echo '<thead><tr>
-<th>Assignment</th>
-<th>Very Happy</th>
-<th>Happy</th>
-<th>Sad</th>
-<th>Depressed</th>
-</tr></thead><tbody>';
+    /* ---------- CREATE METRIC MAP (M1, M2...) ---------- */
 
-foreach ($assignmentmetrics as $row) {
+    $metricMap = [];
+    $index = 1;
 
-    $metrics = json_decode($row->metrics, true);
+    // Take first assignment to map metrics
+    foreach ($assignmentmetrics[0]['metrics'] as $metric => $val) {
+        $metricMap[$metric] = 'Metrics ' . $index++;
+    }
 
-    echo "<tr>
-    <td>".format_string($row->name)."</td>
-    <td>".($metrics['very_happy'] ?? 0)."</td>
-    <td>".($metrics['happy'] ?? 0)."</td>
-    <td>".($metrics['sad'] ?? 0)."</td>
-    <td>".($metrics['depressed'] ?? 0)."</td>
-    </tr>";
+    /* ---------- LEGEND ---------- */
+
+    echo html_writer::start_div('mb-3');
+
+    foreach ($metricMap as $full => $short) {
+        echo html_writer::tag('p', "<strong>$short:</strong> $full", [
+            'style' => 'margin:0; font-size:13px; color:#6c757d;'
+        ]);
+    }
+
+    echo html_writer::end_div();
+
+    /* ---------- TABLE ---------- */
+
+    echo '<table class="table table-bordered table-sm">';
+    echo '<thead><tr><th>Assignment</th>';
+
+    // Dynamic headers
+    foreach ($metricMap as $short) {
+        echo "<th>$short</th>";
+    }
+
+    echo '</tr></thead><tbody>';
+
+    foreach ($assignmentmetrics as $row) {
+
+        echo "<tr>";
+        echo "<td>" . format_string($row['assignment']) . "</td>";
+
+        foreach ($metricMap as $full => $short) {
+            $value = $row['metrics'][$full] ?? '-';
+            echo "<td>$value</td>";
+        }
+
+        echo "</tr>";
+    }
+
+    echo '</tbody></table>';
+
+    echo html_writer::end_div(); // card
+    echo html_writer::end_div(); // col
+    echo html_writer::end_div(); // row
 }
-
-echo '</tbody></table>';
-
-echo html_writer::end_div();
-echo html_writer::end_div();
-echo html_writer::end_div();
-
-}
-
-
 /* --------------------------------------------------
    ROW 3 : BAR + PIE CHART
 -------------------------------------------------- */
