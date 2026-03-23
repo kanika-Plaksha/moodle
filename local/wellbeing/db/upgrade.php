@@ -87,5 +87,38 @@ function xmldb_local_wellbeing_upgrade($oldversion) {
         // Upgrade savepoint
         upgrade_plugin_savepoint(true, 2026032205, 'local', 'wellbeing');
     }
+    if ($oldversion < 2026032701) {
+
+        // Define table
+        $table = new xmldb_table('local_wb_metrics_history');
+
+        // Add fields
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+
+        $table->add_field('submissionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('assignid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_field('metrics', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null);
+
+        $table->add_field('snapshot_month', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Add primary key
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Add unique key (prevents duplicate snapshots)
+        $table->add_key('unique_snapshot', XMLDB_KEY_UNIQUE, ['submissionid', 'snapshot_month']);
+
+        // Create table if not exists
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Savepoint
+        upgrade_plugin_savepoint(true, 2026032701, 'local', 'wellbeing');
+    }
     return true;
 }
