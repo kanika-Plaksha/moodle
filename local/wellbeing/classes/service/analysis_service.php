@@ -555,14 +555,14 @@ class analysis_service {
 
         return $data;
     }
-   public static function get_monthly_scores_from_history($userid, $currentScore) {
+    public static function get_monthly_scores_from_history($userid, $currentScore) {
     global $DB;
 
     $data = [];
 
     /* ---------- STEP 1: GET DB DATA ---------- */
     $records = $DB->get_records_sql("
-        SELECT metrics, snapshot_month
+        SELECT id,metrics, snapshot_month
         FROM {local_wb_metrics_history}
         WHERE userid = ?
     ", [$userid]);
@@ -628,5 +628,161 @@ class analysis_service {
         'currentIndex' => $currentIndex
     ];
     }
-    
+    public static function get_teacher_avg_score($courseid) {
+    global $DB;
+
+     "<pre>===== DEBUG: TEACHER AVG SCORE =====\n";
+
+    /* STEP 1 → LATEST MONTH */
+    $latestmonth = $DB->get_field_sql("
+        SELECT MAX(snapshot_month)
+        FROM {local_wb_metrics_history}
+        WHERE courseid = ?
+    ", [$courseid]);
+
+     "Latest Month: " . $latestmonth . "\n";
+
+    if (!$latestmonth) {
+         "❌ No latest month found\n";
+         "</pre>";
+        return 0;
+    }
+
+    /* STEP 2 → FETCH METRICS */
+    $records = $DB->get_records_sql("
+        SELECT 
+            CONCAT(userid, '-', id) as id,
+            metrics
+        FROM {local_wb_metrics_history}
+        WHERE courseid = ?
+        AND snapshot_month = ?
+    ", [$courseid, $latestmonth]);
+
+     "Total Records Fetched: " . count($records) . "\n";
+
+    if (empty($records)) {
+         "❌ No records found\n";
+         "</pre>";
+        return 0;
+    }
+
+    /* STEP 3 → CALCULATE AVG */
+    $totalScore = 0;
+    $countRows = 0;
+
+    foreach ($records as $rec) {
+
+         "---- Record {$rec->id} ----\n";
+         "Raw Metrics: " . $rec->metrics . "\n";
+
+        if (is_numeric($rec->metrics)) {
+            $totalScore += $rec->metrics;
+            $countRows++;
+
+             "✔ Added: {$rec->metrics}\n";
+        } else {
+             "⚠️ Skipping (not numeric)\n";
+        }
+    }
+
+     "Total Score: $totalScore\n";
+     "Valid Rows Count: $countRows\n";
+
+    /* FINAL AVG */
+    $avgscore = $countRows ? round($totalScore / $countRows) : 0;
+
+     "✅ FINAL AVG SCORE: $avgscore\n";
+     "===========================</pre>";
+
+    return $avgscore;
+    }
+    public static function get_teacher_monthly_trend($courseid) {
+    global $DB;
+
+    /* =========================
+       STEP 1 → GET ALL MONTHS
+    ========================= */
+    $months = $DB->get_records_sql("
+        SELECT DISTINCT snapshot_month
+        FROM {local_wb_metrics_history}
+        WHERE courseid = ?
+        ORDER BY snapshot_month ASC
+    ", [$courseid]);
+
+    if (empty($months)) {
+        return [
+            'labels' => [],
+            'values' => []
+        ];
+    }
+
+    $labels = [];
+    $values = [];
+
+    /* =========================
+       STEP 2 → LOOP MONTHS
+    ========================= */
+    foreach ($months as $m) {
+
+        $month = $m->snapshot_month;
+
+      
+
+        /* FETCH ALL RECORDS FOR MONTH */
+        $records = $DB->get_records_sql("
+            SELECT metrics
+            FROM {local_wb_metrics_history}
+            WHERE courseid = ?
+            AND snapshot_month = ?
+        ", [$courseid, $month]);
+
+        $monthTotal = 0;
+        $studentCount = 0;
+
+        foreach ($records as $rec) {
+
+            $metrics = json_decode($rec->metrics, true);
+
+            // 🔥 HANDLE SINGLE NUMBER CASE (your bug earlier)
+            if (is_numeric($metrics)) {
+                $monthTotal += $metrics;
+                $studentCount++;
+                continue;
+            }
+
+            if (!is_array($metrics)) {
+                continue;
+            }
+
+            $sum = 0;
+            $count = 0;
+
+            foreach ($metrics as $value) {
+                if (is_numeric($value)) {
+                    $sum += $value;
+                    $count++;
+                }
+            }
+
+            if ($count > 0) {
+                $avg = $sum / $count;
+                $monthTotal += $avg;
+                $studentCount++;
+            }
+        }
+
+        $monthAvg = $studentCount ? round($monthTotal / $studentCount) : 0;
+
+
+        /* FORMAT MONTH LABEL */
+        $labels[] = date('M', $month);
+        $values[] = $monthAvg;
+    }
+
+    return [
+        'labels' => $labels,
+        'values' => $values
+    ];
+    }
+
 }

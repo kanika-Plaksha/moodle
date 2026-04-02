@@ -32,11 +32,6 @@ if (has_capability('moodle/course:update', $context)) {
     $totals = analysis_service::get_student_assignment_metrics_filtered($courseid, $USER->id);
     $isstudent = true;
 }
-if ($isstudent) {
-
-} else {
-    echo $OUTPUT->heading('Course Wellbeing Report');
-}
 if (empty($totals)) {
     echo $OUTPUT->notification('No wellbeing data available yet.', 'info');
     echo $OUTPUT->footer();
@@ -80,93 +75,6 @@ $percentage = $metricCount > 0
     ? round((($totalScore - $minScore) / ($maxScore - $minScore)) * 100)
     : 0;
 
-//CHeck calculation
-// $totalresponses = array_sum($totals);
-
-// $percentages = [];
-
-// echo "<pre>";
-// echo "📊 RAW TOTALS:\n";
-// print_r($totals);
-// echo "</pre>";
-
-// $combined = [];
-
-// foreach ($totals as $item) {
-
-//     if (empty($item['metrics'])) {
-//         continue;
-//     }
-
-//     foreach ($item['metrics'] as $metric => $score) {
-
-//         if (!isset($combined[$metric])) {
-//             $combined[$metric] = 0;
-//         }
-
-//         $combined[$metric] += $score;
-//     }
-// }
-
-// /* ---------- DEBUG COMBINED ---------- */
-
-// echo "<pre>";
-// echo "📦 COMBINED METRICS:\n";
-// foreach ($combined as $metric => $value) {
-//     echo $metric . " => " . $value . "\n";
-// }
-// echo "</pre>";
-
-// /* --------------------------------------------------
-//    OVERALL WELLBEING SCORE
-// -------------------------------------------------- */
-
-// $totalScore = array_sum($combined);
-// $metricCount = count($combined);
-
-// $minScore = $metricCount;
-// $maxScore = $metricCount * 7;
-
-// /* ---------- DEBUG CALCULATION ---------- */
-
-// echo "<pre>";
-// echo "🧮 TOTAL SCORE: $totalScore\n";
-// echo "📊 METRIC COUNT: $metricCount\n";
-// echo "📉 MIN SCORE: $minScore\n";
-// echo "📈 MAX SCORE: $maxScore\n";
-
-// if ($metricCount > 0) {
-
-//     $numerator = $totalScore - $minScore;
-//     $denominator = $maxScore - $minScore;
-
-//     echo "\n🧠 FORMULA:\n";
-//     echo "($totalScore - $minScore) / ($denominator)\n";
-
-//     $raw = $denominator > 0 ? ($numerator / $denominator) : 0;
-
-//     echo "Raw Value: $raw\n";
-
-//     $percentage = round($raw * 100);
-
-// } else {
-//     $percentage = 0;
-// }
-
-// echo "\n🎯 FINAL PERCENTAGE: $percentage%\n";
-// echo "</pre>";
-//check calucltions
-if ($percentage < 20) {
-    $emoji = "😟"; $color = "#dc3545";
-} elseif ($percentage < 40) {
-    $emoji = "😕"; $color = "#fd7e14";
-} elseif ($percentage < 60) {
-    $emoji = "😐"; $color = "#ffc107";
-} elseif ($percentage < 80) {
-    $emoji = "🙂"; $color = "#20c997";
-} else {
-    $emoji = "😄"; $color = "#28a745";
-}
 
 /* --------------------------------------------------
    ASSIGNMENT COMPLETION DATA
@@ -197,31 +105,7 @@ $completionpercentage = $totalassignments > 0
 $draftpercentage = $totalassignments > 0
     ? round(($draft / $totalassignments) * 100)
     : 0;
-// $totalassignments = 0;
-// $completed = 0;
-// $draft= 0;
 
-// if (!empty($progressdata)) {
-
-//     $totalassignments = count($progressdata);
-
-//     foreach ($progressdata as $item) {
-//         if ($item->status === 'submitted') {
-//             $completed++;
-//         } else if ($item->status === 'draft') {
-//             $draft++;
-//         }
-//     }
-// }
-
-// $completionpercentage = $totalassignments > 0
-//     ? round(($completed / $totalassignments) * 100)
-//     : 0;
-
-
-/* --------------------------------------------------
-   ROW 1 : 
--------------------------------------------------- */
 /* =========================
    HERO HEADER + STATS CARDS
 ========================= */
@@ -290,6 +174,7 @@ echo '
 /* =========================
    WRAPPER START
 ========================= */
+if ($isstudent) {
 
     echo html_writer::start_div('wb-dashboard-wrap');
     echo html_writer::start_div('wb-header');
@@ -374,6 +259,7 @@ echo html_writer::end_div(); // row
 ========================= */
 
 echo html_writer::end_div();
+}
 
 
 /* =========================
@@ -486,6 +372,101 @@ echo '
     background: #e0f2fe;
     color: #0369a1;
 }
+  /* =========================
+   EMOTIONAL BREAKDOWN
+========================= */
+
+.wb-emotional-wrap {
+    background: #f8fafc;
+    border-radius: 18px;
+    padding: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+/* LEFT */
+.wb-emotional-left {
+    max-width: 30%;
+}
+
+.wb-emotional-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.wb-emotional-sub {
+    font-size: 14px;
+    color: #64748b;
+    margin-top: 6px;
+}
+
+/* RIGHT */
+.wb-emotional-cards {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+/* CARD */
+.wb-em-card {
+    width: 180px;
+    border-radius: 16px;
+    padding: 18px;
+    color: #0f172a;
+    background: #fff;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    position: relative;
+    transition: 0.3s;
+}
+
+.wb-em-card:hover {
+    transform: translateY(-6px);
+}
+
+/* EMOJI */
+.wb-em-icon {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    border-radius: 50%;
+    padding: 10px;
+    font-size: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* TEXT */
+.wb-em-label {
+    text-align: center;
+    font-weight: 600;
+    margin-top: 18px;
+    font-size: 14px;
+}
+
+.wb-em-desc {
+    text-align: center;
+    font-size: 12px;
+    color: #475569;
+    margin-top: 6px;
+    min-height: 40px;
+}
+
+/* VALUE */
+.wb-em-value {
+    text-align: center;
+    font-size: 26px;
+    font-weight: 700;
+    margin-top: 12px;
+}
+
+.wb-card-emotional-green {
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+}
+
 </style>
 ';
 
@@ -509,7 +490,7 @@ $current_index = json_encode($currentIndex);
 /* =========================
    UI START
 ========================= */
-
+if ($isstudent) {
 echo html_writer::start_div('wb-section');
 
 echo html_writer::start_div('row g-4');
@@ -530,7 +511,7 @@ echo '<div class="wb-chart-container">
 
 echo html_writer::end_div();
 echo html_writer::end_div();
-
+}
 /* =====================================
    RIGHT → ASSIGNMENT PROGRESS
 ===================================== */
@@ -806,108 +787,548 @@ if (!empty($assignmentmetrics)) {
 
 // $labels = array_keys($percentages);
 // $values = array_values($percentages);
+/* =========================
+   ROW 4 → EMOTIONAL BREAKDOWN (CARDS UI)
+========================= */
+/* =========================
+   METRIC TOTAL CALCULATION
+========================= */
 
-/* --------------------------------------------------
-   ROW 4 : DETAILED BREAKDOWN
--------------------------------------------------- */
+$metricTotals = [];
+$metricCounts = [];
 
-echo html_writer::start_div('row mt-5');
+foreach ($assignmentmetrics as $row) {
 
-echo html_writer::start_div('col-12');
+    if (empty($row['metrics'])) continue;
 
-echo html_writer::tag('h4', 'Detailed Breakdown');
+    foreach ($row['metrics'] as $metric => $score) {
 
-echo html_writer::start_div('card shadow-sm p-4 mb-4');
-
-echo html_writer::start_tag('table', [
-    'class' => 'table table-striped table-bordered',
-    'style' => 'width:100%;'
-]);
-
-echo html_writer::start_tag('thead');
-echo html_writer::start_tag('tr');
-
-echo html_writer::tag('th', 'Emotion', ['style'=>'width:200px;']);
-echo html_writer::tag('th', 'Total Score');
-
-echo html_writer::end_tag('tr');
-echo html_writer::end_tag('thead');
-
-echo html_writer::start_tag('tbody');
-
-foreach ($percentages as $emotion => $percent) {
-
-    $cleanname = ucwords(str_replace('_', ' ', $emotion));
-
-    switch ($emotion) {
-
-        case 'very_happy':
-            $color = '#1f9d78';
-            break;
-
-        case 'happy':
-            $color = '#38a169';
-            break;
-
-        case 'neutral':
-            $color = '#718096';
-            break;
-
-        case 'sad':
-            $color = '#dd6b20';
-            break;
-
-        case 'depressed':
-            $color = '#c53030';
-            break;
-
-        default:
-            $color = '#6c757d';
+    if ($score === null || $score === '' || !is_numeric($score)) {
+        continue; // 🚨 skip invalid
     }
 
-    echo html_writer::start_tag('tr');
+    $normalized = trim(strtolower($metric));
+    $normalized = rtrim($normalized, '.');
 
-    echo html_writer::tag(
-        'td',
-        '<span style="font-size:14px;color:#495057;">'.$cleanname.'</span>'
-    );
+    if (!isset($metricTotals[$normalized])) {
+        $metricTotals[$normalized] = 0;
+        $metricCounts[$normalized] = 0;
+    }
 
-    echo html_writer::start_tag('td');
+    $metricTotals[$normalized] += (float)$score;
+    $metricCounts[$normalized] += 1;
+}
+}
+/* =========================
+   CONVERT TO PERCENTAGE
+========================= */
 
-    echo '
-    <div style="
-        background:#e9ecef;
-        border-radius:6px;
-        height:10px;
-        overflow:hidden;
-    ">
-        <div style="
-            width:'.$percent.'%;
-            background:'.$color.';
-            height:100%;
-        "></div>
-    </div>
+$metricPercentages = [];
 
-    <div style="
-        font-size:12px;
-        color:#6c757d;
-        margin-top:4px;
-        text-align:right;
-    ">
-        '.$percent.'%
-    </div>
-    ';
+foreach ($metricTotals as $metric => $total) {
 
-    echo html_writer::end_tag('td');
+    $count = $metricCounts[$metric];
 
-    echo html_writer::end_tag('tr');
+    // average score
+    $avg = $count > 0 ? ($total / $count) : 0;
+    $avg = max(1, min(7, $avg));
+
+    // convert to %
+    $percent = (($avg - 1) / (7 - 1)) * 100;
+    $percent = max(0, min(100, $percent));
+
+    $metricPercentages[$metric] = round($percent);
+}
+if ($isstudent) {
+echo html_writer::start_div('row mt-5');
+echo html_writer::start_div('col-12');
+
+/* MAIN WRAPPER */
+echo html_writer::start_div('wb-emotional-wrap wb-card-emotional-green');
+
+/* LEFT SIDE */
+echo html_writer::start_div('wb-emotional-left');
+
+echo html_writer::tag('h3', 'Emotional Breakdown', ['class'=>'wb-emotional-title']);
+
+echo html_writer::tag(
+    'p',
+    'Assessment of wellbeing metrics based on your responses',
+    ['class'=>'wb-emotional-sub']
+);
+
+echo html_writer::end_div();
+
+/* RIGHT SIDE (CARDS) */
+echo html_writer::start_div('wb-emotional-cards');
+
+/* COLORS + EMOJIS */
+$colors = ['wb-card-orange','wb-card-green','wb-card-blue','wb-card-red'];
+$emojis = ['💖','💡','🌈','🧠'];
+
+$i = 0;
+
+foreach ($metricMap as $clean => $m) {
+
+    $value = $metricPercentages[$clean] ?? 0;
+    $color = $colors[$i % count($colors)];
+    $emoji = $emojis[$i % count($emojis)];
+
+    echo html_writer::start_div("wb-em-card $color");
+
+    /* EMOJI */
+    echo html_writer::tag('div', $emoji, ['class'=>'wb-em-icon']);
+
+    /* TITLE */
+    echo html_writer::tag('div', $m['label'], ['class'=>'wb-em-label']);
+
+    /* DESC */
+    echo html_writer::tag('div', $m['full'], ['class'=>'wb-em-desc']);
+
+    /* VALUE */
+    echo html_writer::tag('div', "$value%", ['class'=>'wb-em-value']);
+
+    echo html_writer::end_div();
+
+    $i++;
 }
 
-echo html_writer::end_tag('tbody');
-echo html_writer::end_tag('table');
+echo html_writer::end_div(); // cards
 
-echo html_writer::end_div(); // card
-echo html_writer::end_div(); // col-12
-echo html_writer::end_div(); // row
+echo html_writer::end_div(); // wrapper
 
+echo html_writer::end_div();
+echo html_writer::end_div();
+}
+
+//teacher
+if (!$isstudent) {
+    /* =========================
+   TEACHER DASHBOARD DATA
+========================= */
+
+/* ✅ AVG SCORE (already done) */
+$avgscore = analysis_service::get_teacher_avg_score($courseid);
+
+/* =========================
+   TOTAL STUDENTS
+========================= */
+$context = context_course::instance($courseid);
+
+$students = get_enrolled_users($context, 'mod/assign:submit');
+$totalstudents = count($students);
+
+/* =========================
+   TOTAL ASSIGNMENTS
+========================= */
+$totalassignments = $DB->count_records('assign', ['course' => $courseid]);
+
+/* =========================
+   AVG COMPLETION %
+========================= */
+
+$assignments = $DB->get_records('assign', ['course' => $courseid]);
+
+$totalPossible = 0;
+$totalSubmitted = 0;
+
+$trend = analysis_service::get_teacher_monthly_trend($courseid);
+
+$labels_json = json_encode($trend['labels']);
+$values_json = json_encode($trend['values']);
+
+foreach ($assignments as $assign) {
+
+    $submissions = $DB->get_records('assign_submission', [
+        'assignment' => $assign->id
+    ]);
+
+    foreach ($students as $student) {
+
+        $totalPossible++;
+
+        foreach ($submissions as $sub) {
+            if ($sub->userid == $student->id && $sub->status == 'submitted') {
+                $totalSubmitted++;
+                break;
+            }
+        }
+    }
+}
+
+$avgcompletion = $totalPossible > 0
+    ? round(($totalSubmitted / $totalPossible) * 100)
+    : 0;
+echo '
+<style>
+
+/* ===== WRAPPER ===== */
+.wb-wrap {
+    background:#f6f7fb;
+    padding:25px;
+    border-radius:20px;
+    font-family: "Segoe UI", sans-serif;
+}
+
+/* ===== HEADER ===== */
+.wb-header-title {
+    font-size:28px;
+    font-weight:700;
+    margin-bottom:5px;
+}
+.wb-header-sub {
+    color:#6b7280;
+    font-size:14px;
+}
+
+/* ===== CARDS ===== */
+.wb-top-cards {
+    display:flex;
+    gap:15px;
+    margin-top:20px;
+}
+.wb-card {
+    flex:1;
+    border-radius:16px;
+    padding:18px;
+    color:#fff;
+    position:relative;
+    overflow:hidden;
+}
+.wb-card h3 {
+    font-size:26px;
+    margin:5px 0;
+}
+.wb-card p {
+    font-size:13px;
+    opacity:.9;
+}
+
+/* gradients */
+.wb-green { background:linear-gradient(135deg,#7dd3fc,#34d399); }
+.wb-blue { background:linear-gradient(135deg,#60a5fa,#818cf8); }
+.wb-orange { background:linear-gradient(135deg,#fbbf24,#fb923c); }
+.wb-red { background:linear-gradient(135deg,#fb7185,#f97316); }
+
+/* ===== SECTION ===== */
+.wb-row {
+    display:flex;
+    gap:20px;
+    margin-top:25px;
+}
+
+/* ===== PANEL ===== */
+.wb-panel {
+    background:#fff;
+    border-radius:16px;
+    padding:18px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.05);
+    flex:1;
+}
+
+/* ===== TREND ===== */
+.wb-trend { flex:2; }
+.wb-chart {
+    height: 260px;
+    position: relative;
+}
+
+/* ===== TOP PERFORMERS ===== */
+.wb-student {
+    display:flex;
+    align-items:center;
+    margin-bottom:15px;
+}
+.wb-avatar {
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    background:#e5e7eb;
+    margin-right:10px;
+}
+.wb-name { flex:1; }
+.wb-score {
+    background:#ecfdf5;
+    color:#059669;
+    padding:5px 10px;
+    border-radius:20px;
+    font-weight:600;
+}
+
+/* ===== PARTICIPATION ===== */
+.wb-progress {
+    margin-bottom:15px;
+}
+.wb-progress-title {
+    display:flex;
+    justify-content:space-between;
+    font-size:13px;
+}
+.wb-bar {
+    height:8px;
+    background:#e5e7eb;
+    border-radius:6px;
+    margin-top:5px;
+}
+.wb-bar-fill {
+    height:100%;
+    border-radius:6px;
+    background:#22c55e;
+}
+
+/* ===== METRICS ===== */
+.wb-metrics {
+    display:flex;
+    gap:12px;
+}
+.wb-metric {
+    flex:1;
+    background:#f1f5f9;
+    border-radius:14px;
+    padding:15px;
+    text-align:center;
+}
+.wb-metric-emoji {
+    font-size:22px;
+}
+.wb-metric-text {
+    font-size:12px;
+    margin-top:5px;
+}
+.wb-metric-val {
+    font-size:18px;
+    font-weight:700;
+    margin-top:4px;
+}
+.wb-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* 70-30 ratio */
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.wb-panel {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
+.wb-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 10px;
+}
+
+.wb-chart-container {
+    position: relative;
+    height: 260px; /* important for chart */
+    width: 100%;
+}
+</style>
+
+<div class="wb-wrap">
+
+    <!-- HEADER -->
+    <div class="wb-header-title">Teacher Dashboard 👩‍🏫</div>
+    <div class="wb-header-sub">Monitor student wellbeing, performance & engagement</div>
+
+    <!-- TOP CARDS -->
+  
+    <div class="wb-top-cards">
+
+        <div class="wb-card wb-green">
+            <div>Avg Score</div>
+            <h3>'.$avgscore.'%</h3>
+            <p>Class Average</p>
+        </div>
+
+        <div class="wb-card wb-blue">
+            <div>Students</div>
+            <h3>'.$totalstudents.'</h3>
+            <p>Enrolled</p>
+        </div>
+
+        <div class="wb-card wb-orange">
+            <div>Assignments</div>
+            <h3>'.$totalassignments.'</h3>
+            <p>Total Activities</p>
+        </div>
+
+        <div class="wb-card wb-red">
+            <div>Avg Completion</div>
+            <h3>'.$avgcompletion.'%</h3>
+            <p>Class Progress</p>
+        </div>
+
+    </div>
+
+
+    <!-- ROW 2 -->
+  <div class="wb-row">
+
+    <!-- TREND -->
+    <div class="wb-panel wb-trend">
+        <div class="wb-card-title">Class Wellbeing Trend</div>
+
+        <div class="wb-chart-container">
+            <canvas id="teacherTrendChart"></canvas>
+        </div>
+    </div>
+
+
+        <!-- TOP PERFORMERS -->
+        <div class="wb-panel">
+            <div style="font-weight:600;margin-bottom:10px;">Top Performers</div>
+
+            <div class="wb-student">
+                <div class="wb-avatar"></div>
+                <div class="wb-name">Valy Antonova</div>
+                <div class="wb-score">92%</div>
+            </div>
+
+            <div class="wb-student">
+                <div class="wb-avatar"></div>
+                <div class="wb-name">Mark Neil</div>
+                <div class="wb-score">87%</div>
+            </div>
+
+            <div class="wb-student">
+                <div class="wb-avatar"></div>
+                <div class="wb-name">Nenci Villy</div>
+                <div class="wb-score">85%</div>
+            </div>
+
+            <div style="font-size:13px;color:#6b7280;margin-top:10px;">View All →</div>
+        </div>
+
+    </div>
+
+    <!-- ROW 3 -->
+    <div class="wb-row">
+
+        <!-- PARTICIPATION -->
+        <div class="wb-panel">
+            <div style="font-weight:600;margin-bottom:10px;">Class Participation</div>
+
+            <div class="wb-progress">
+                <div class="wb-progress-title"><span>Assignment 1</span><span>85%</span></div>
+                <div class="wb-bar"><div class="wb-bar-fill" style="width:85%"></div></div>
+            </div>
+
+            <div class="wb-progress">
+                <div class="wb-progress-title"><span>Assignment 2</span><span>78%</span></div>
+                <div class="wb-bar"><div class="wb-bar-fill" style="width:78%"></div></div>
+            </div>
+
+            <div class="wb-progress">
+                <div class="wb-progress-title"><span>Assignment 3</span><span>92%</span></div>
+                <div class="wb-bar"><div class="wb-bar-fill" style="width:92%"></div></div>
+            </div>
+
+        </div>
+
+        <!-- METRICS -->
+        <div class="wb-panel">
+            <div style="font-weight:600;margin-bottom:10px;">Class Emotional Insights</div>
+
+            <div class="wb-metrics">
+
+                <div class="wb-metric">
+                    <div class="wb-metric-emoji">💫</div>
+                    <div class="wb-metric-text">I am a good person</div>
+                    <div class="wb-metric-val">78%</div>
+                </div>
+
+                <div class="wb-metric">
+                    <div class="wb-metric-emoji">🌱</div>
+                    <div class="wb-metric-text">I am optimistic</div>
+                    <div class="wb-metric-val">76%</div>
+                </div>
+
+                <div class="wb-metric">
+                    <div class="wb-metric-emoji">🤝</div>
+                    <div class="wb-metric-text">I feel supported</div>
+                    <div class="wb-metric-val">73%</div>
+                </div>
+
+                <div class="wb-metric">
+                    <div class="wb-metric-emoji">😊</div>
+                    <div class="wb-metric-text">I am happy</div>
+                    <div class="wb-metric-val">79%</div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+';
+echo '<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>';
+echo '
+<script>
+window.addEventListener("load", function () {
+
+    console.log("🔥 INLINE JS WORKING");
+
+    const canvas = document.getElementById("teacherTrendChart");
+
+    if (!canvas) {
+        console.error("❌ Canvas NOT found");
+        return;
+    }
+
+    console.log("✅ Canvas found");
+
+    const ctx = canvas.getContext("2d");
+
+    // ✅ DATA FROM PHP
+    const labels = '.$labels_json.';
+    const data = '.$values_json.';
+
+    console.log("📊 Labels:", labels);
+    console.log("📊 Data:", data);
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+    gradient.addColorStop(0, "rgba(34,197,94,0.3)");
+    gradient.addColorStop(1, "rgba(34,197,94,0.02)");
+
+    new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                borderColor: "#22c55e",
+                backgroundColor: gradient,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: "#22c55e"
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false }
+            },
+            scales: {
+                x: { 
+                    grid: { display: false }
+                },
+                y: { 
+                    grid: { display: false },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+});
+</script>
+';
+}
 echo $OUTPUT->footer();
