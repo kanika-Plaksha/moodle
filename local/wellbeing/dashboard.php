@@ -693,93 +693,94 @@ $assignmentmetrics = analysis_service::get_student_assignment_metrics_filtered($
 // echo "📊 RAW TOTALS:\n";
 // print_r($assignmentmetrics);
 // echo "</pre>";
+if ($isstudent) {
+    if (!empty($assignmentmetrics)) {
 
-if (!empty($assignmentmetrics)) {
+        echo html_writer::start_div('row mt-4');
+        echo html_writer::start_div('col-12');
 
-    echo html_writer::start_div('row mt-4');
-    echo html_writer::start_div('col-12');
+        echo html_writer::start_div('card shadow-sm p-4');
 
-    echo html_writer::start_div('card shadow-sm p-4');
+        echo html_writer::tag('h4', 'Assignment-wise Wellbeing Metrics');
 
-    echo html_writer::tag('h4', 'Assignment-wise Wellbeing Metrics');
+        /* ---------- CREATE METRIC MAP (M1, M2...) ---------- */
 
-    /* ---------- CREATE METRIC MAP (M1, M2...) ---------- */
+        $metricMap = [];
+        $index = 1;
 
-    $metricMap = [];
-    $index = 1;
+        /* 🔥 collect ALL unique metrics */
+        foreach ($assignmentmetrics as $row) {
+            foreach ($row['metrics'] as $metric => $val) {
 
-    /* 🔥 collect ALL unique metrics */
-    foreach ($assignmentmetrics as $row) {
-        foreach ($row['metrics'] as $metric => $val) {
+                // normalize (avoid duplicates due to dots/case)
+                $cleanMetric = trim(strtolower($metric));
+                $cleanMetric = rtrim($cleanMetric, '.');
 
-            // normalize (avoid duplicates due to dots/case)
-            $cleanMetric = trim(strtolower($metric));
-            $cleanMetric = rtrim($cleanMetric, '.');
-
-            if (!isset($metricMap[$cleanMetric])) {
-                $metricMap[$cleanMetric] = [
-                    'label' => 'Metric ' . $index++,
-                    'full' => $metric
-                ];
+                if (!isset($metricMap[$cleanMetric])) {
+                    $metricMap[$cleanMetric] = [
+                        'label' => 'Metric ' . $index++,
+                        'full' => $metric
+                    ];
+                }
             }
         }
-    }
 
-    /* ---------- LEGEND ---------- */
+        /* ---------- LEGEND ---------- */
 
-    echo html_writer::start_div('mb-3');
+        echo html_writer::start_div('mb-3');
 
-   foreach ($metricMap as $m) {
-    echo html_writer::tag('p', "<strong>{$m['label']}:</strong> {$m['full']}", [
-        'style' => 'margin:0; font-size:13px; color:#6c757d;'
-    ]);
-}
-
-    echo html_writer::end_div();
-
-    /* ---------- TABLE ---------- */
-
-    echo '<table class="table table-bordered table-sm">';
-    echo '<thead><tr><th>Assignment</th>';
-
-    // Dynamic headers
     foreach ($metricMap as $m) {
-        echo "<th>{$m['label']}</th>";
+        echo html_writer::tag('p', "<strong>{$m['label']}:</strong> {$m['full']}", [
+            'style' => 'margin:0; font-size:13px; color:#6c757d;'
+        ]);
     }
 
-    echo '</tr></thead><tbody>';
+        echo html_writer::end_div();
 
-    foreach ($assignmentmetrics as $row) {
+        /* ---------- TABLE ---------- */
 
-            echo "<tr>";
-            echo "<td>" . format_string($row['assignment']) . "</td>";
+        echo '<table class="table table-bordered table-sm">';
+        echo '<thead><tr><th>Assignment</th>';
 
-        foreach ($metricMap as $clean => $m) {
-
-        $value = '-';
-
-        foreach ($row['metrics'] as $metric => $score) {
-
-            $normalized = trim(strtolower($metric));
-            $normalized = rtrim($normalized, '.');
-
-            if ($normalized === $clean) {
-                $value = $score;
-                break;
-            }
+        // Dynamic headers
+        foreach ($metricMap as $m) {
+            echo "<th>{$m['label']}</th>";
         }
 
-        echo "<td>$value</td>";
+        echo '</tr></thead><tbody>';
+
+        foreach ($assignmentmetrics as $row) {
+
+                echo "<tr>";
+                echo "<td>" . format_string($row['assignment']) . "</td>";
+
+            foreach ($metricMap as $clean => $m) {
+
+            $value = '-';
+
+            foreach ($row['metrics'] as $metric => $score) {
+
+                $normalized = trim(strtolower($metric));
+                $normalized = rtrim($normalized, '.');
+
+                if ($normalized === $clean) {
+                    $value = $score;
+                    break;
+                }
+            }
+
+            echo "<td>$value</td>";
+        }
+
+            echo "</tr>";
+        }
+
+        echo '</tbody></table>';
+
+        echo html_writer::end_div(); // card
+        echo html_writer::end_div(); // col
+        echo html_writer::end_div(); // row
     }
-
-        echo "</tr>";
-    }
-
-    echo '</tbody></table>';
-
-    echo html_writer::end_div(); // card
-    echo html_writer::end_div(); // col
-    echo html_writer::end_div(); // row
 }
 /* --------------------------------------------------
    ROW 3 : BAR + PIE CHART
@@ -936,6 +937,8 @@ $trend = analysis_service::get_teacher_monthly_trend($courseid);
 
 $labels_json = json_encode($trend['labels']);
 $values_json = json_encode($trend['values']);
+$topstudents = analysis_service::get_top_performers($courseid, 3);
+$allstudents = analysis_service::get_top_performers($courseid, 100); 
 
 foreach ($assignments as $assign) {
 
@@ -959,6 +962,86 @@ foreach ($assignments as $assign) {
 $avgcompletion = $totalPossible > 0
     ? round(($totalSubmitted / $totalPossible) * 100)
     : 0;
+
+echo '
+<style>
+
+/* STUDENT ROW */
+.wb-student {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 0;
+}
+
+.wb-avatar {
+    width:30px;
+    height:30px;
+    background:#e5e7eb;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.wb-name {
+    flex:1;
+    margin-left:10px;
+    font-size:14px;
+}
+
+.wb-score {
+    font-weight:600;
+    color:#16a34a;
+}
+
+/* VIEW ALL */
+.wb-view-all {
+    font-size:13px;
+    color:#6b7280;
+    margin-top:10px;
+    cursor:pointer;
+}
+
+/* MODAL */
+.wb-modal {
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.4);
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+}
+
+.wb-modal-content {
+    background:#fff;
+    width:400px;
+    border-radius:12px;
+    padding:15px;
+}
+
+.wb-modal-header {
+    display:flex;
+    justify-content:space-between;
+    font-weight:600;
+    margin-bottom:10px;
+}
+
+.wb-close {
+    cursor:pointer;
+}
+
+.wb-modal-body {
+    max-height:300px;
+    overflow-y:auto;
+}
+
+</style>
+';
 echo '
 <style>
 
@@ -1126,6 +1209,283 @@ echo '
     height: 260px; /* important for chart */
     width: 100%;
 }
+.wb-sub {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 12px;
+}
+
+.wb-progress-block {
+    margin-bottom: 18px;
+}
+
+.wb-progress-title {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+.wb-bar {
+    display: flex;
+    height: 8px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #e5e7eb;
+}
+
+.wb-bar-fill {
+    height: 100%;
+}
+
+/* COLORS */
+.wb-green { background: #22c55e; }
+.wb-orange { background: #f59e0b; }
+.wb-gray { background: #cbd5f5; }
+
+/* LEGEND */
+.wb-legend {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 6px;
+    display: flex;
+    gap: 12px;
+}
+
+.wb-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+}
+    /* GRID */
+.wb-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+}
+
+/* PANEL */
+.wb-panel {
+    background: #fff;
+    padding: 16px;
+    border-radius: 12px;
+}
+
+/* TITLES */
+.wb-card-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.wb-sub {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 10px;
+}
+
+/* ACCORDION */
+.wb-accordion {
+    border-bottom:1px solid #f1f5f9;
+    padding:10px 0;
+}
+
+.wb-accordion-header {
+    display:flex;
+    justify-content:space-between;
+    cursor:pointer;
+}
+
+.wb-accordion-body {
+    display: none;
+    margin-top: 10px;
+}
+
+.wb-accordion.active .wb-accordion-body {
+    display: block;
+}
+
+/* STUDENTS */
+.wb-student-row {
+    display:flex;
+    justify-content:space-between;
+    padding:8px 0;
+}
+
+.wb-student-left {
+    display:flex;
+    gap:8px;
+}
+
+.wb-avatar {
+    background:#f1f5f9;
+    padding:6px;
+    border-radius:50%;
+}
+
+.wb-score-badge {
+    background:#ecfdf5;
+    color:#16a34a;
+    padding:4px 10px;
+    border-radius:20px;
+}
+
+/* RIGHT SIDE */
+.wb-progress-card {
+    display:flex;
+    gap:12px;
+    margin-bottom:16px;
+    padding:12px;
+    border:1px solid #f1f5f9;
+    border-radius:10px;
+}
+
+/* CIRCLE */
+.wb-progress-circle {
+    width:70px;
+    height:70px;
+    border-radius:50%;
+    background: conic-gradient(#22c55e calc(var(--value)*1%), #e5e7eb 0%);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:600;
+}
+
+/* BARS */
+.wb-bars {
+    display:flex;
+    height:6px;
+    margin:6px 0;
+    overflow:hidden;
+    border-radius:10px;
+}
+
+.wb-bar.submitted { background:#22c55e; }
+.wb-bar.draft { background:#f59e0b; }
+.wb-bar.pending { background:#ef4444; }
+
+/* LEGEND */
+.wb-legend {
+    font-size:11px;
+    display:flex;
+    gap:10px;
+}
+
+.dot {
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    display:inline-block;
+}
+
+.dot.green { background:#22c55e; }
+.dot.orange { background:#f59e0b; }
+.dot.red { background:#ef4444; }
+
+/* MISC */
+.wb-muted {
+    color:#9ca3af;
+}
+ /* GRID */
+.wb-ring-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+/* CARD */
+.wb-ring-card {
+    text-align: center;
+}
+
+/* SVG WRAP */
+.wb-svg-ring {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    margin: auto;
+}
+
+/* SVG */
+.wb-svg-ring svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg); /* start from top */
+}
+
+/* TRACKS */
+.track {
+    fill: none;
+    stroke: #E8E9EB;
+    opacity:0.4
+}
+
+.track.outer { stroke-width: 7; }
+.track.middle { stroke-width: 7; }
+.track.inner { stroke-width: 7; }
+
+/* PROGRESS */
+.progress {
+    fill: none;
+    stroke-linecap: round; /* 🔥 rounded ends */
+    transition: stroke-dashoffset 0.6s ease;
+}
+
+.progress.green {
+    stroke: #6CC070;
+    stroke-width: 7;
+}
+
+.progress.orange {
+    stroke: #F4A261;
+    stroke-width: 7;
+}
+
+.progress.red {
+    stroke: #E76F51;
+    stroke-width: 7;
+}
+
+/* CENTER TEXT */
+.wb-ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* TITLE */
+.wb-ring-title {
+    margin-top: 12px;
+    font-weight: 500;
+}
+
+/* LEGEND */
+.wb-ring-legend {
+    margin-top: 8px;
+    text-align: left;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+.dot.green { background:#6CC070; }
+.dot.orange { background:#F4A261; }
+.dot.red { background:#E76F51; }
 </style>
 
 <div class="wb-wrap">
@@ -1176,94 +1536,210 @@ echo '
             <canvas id="teacherTrendChart"></canvas>
         </div>
     </div>
+';
 
 
-        <!-- TOP PERFORMERS -->
+    echo '<div class="wb-panel">
+        <div style="font-weight:600;margin-bottom:10px;">Top Performers</div>';
+
+            if (!empty($topstudents)) {
+
+                foreach ($topstudents as $stu) {
+
+                    echo '<div class="wb-student">
+                            <div class="wb-avatar">👤</div>
+                            <div class="wb-name">'.$stu['name'].'</div>
+                            <div class="wb-score">'.$stu['score'].'%</div>
+                        </div>';
+                }
+
+            } else {
+
+                echo '<div style="color:#9ca3af;font-size:13px;">No data available</div>';
+            }
+
+    echo '<div class="wb-view-all" onclick="openTopStudentsModal()">View All →</div>
+      </div>';
+$assignmentParticipation = analysis_service::get_assignment_participation($courseid);
+$assignmentStudentScores = analysis_service::get_assignment_student_scores($courseid);
+
+echo'</div>';
+
+
+echo '<div class="wb-grid pt-4">';
+
+/* =========================
+   LEFT SIDE → CLASS SCORE
+========================= */
+echo '<div class="wb-left">';
+
+echo '<div class="wb-panel">
+        <div class="wb-card-title">Class Overall Score</div>
+        <div class="wb-sub">Assignment-wise student performance</div>';
+
+if (!empty($assignmentStudentScores)) {
+
+    foreach ($assignmentStudentScores as $assignment) {
+
+        echo '
+        <div class="wb-accordion">
+
+            <div class="wb-accordion-header" onclick="toggleAccordion(this)">
+                <span>'.format_string($assignment['name']).'</span>
+                <span class="wb-arrow">▼</span>
+            </div>
+
+            <div class="wb-accordion-body">';
+
+        if (!empty($assignment['students'])) {
+
+            foreach ($assignment['students'] as $stu) {
+
+                echo '
+                <div class="wb-student-row">
+                    <div class="wb-student-left">
+                        <span class="wb-avatar">👤</span>
+                        <span class="wb-name">'.$stu['name'].'</span>
+                    </div>
+
+                    <div class="wb-score-badge">'.$stu['score'].'%</div>
+                </div>';
+            }
+
+        } else {
+            echo '<div class="wb-muted">No student data</div>';
+        }
+
+        echo '
+            </div>
+        </div>';
+    }
+
+} else {
+    echo '<div class="wb-muted">No data available</div>';
+}
+
+echo '</div>';
+echo '</div>';
+
+
+/* =========================
+   RIGHT SIDE → ASSIGNMENT COMPLETION
+========================= */
+
+echo '<div class="wb-right">
         <div class="wb-panel">
-            <div style="font-weight:600;margin-bottom:10px;">Top Performers</div>
+            <div class="wb-card-title">Assignment Completion</div>
 
-            <div class="wb-student">
-                <div class="wb-avatar"></div>
-                <div class="wb-name">Valy Antonova</div>
-                <div class="wb-score">92%</div>
+            <div class="wb-ring-grid">';
+
+if (!empty($assignmentParticipation)) {
+
+    foreach ($assignmentParticipation as $a) {
+
+        $submitted = $a['submitted'];
+        $draft = $a['draft'];
+        $pending = $a['pending'];
+
+        echo '
+        <div class="wb-ring-card">
+
+            <div class="wb-svg-ring">
+
+                <svg viewBox="0 0 120 120">
+
+                    <!-- TRACKS (GREY) -->
+                    <circle cx="60" cy="60" r="50" class="track outer"/>
+                    <circle cx="60" cy="60" r="38" class="track middle"/>
+                    <circle cx="60" cy="60" r="26" class="track inner"/>
+
+                    <!-- PROGRESS -->
+                    <circle cx="60" cy="60" r="50"
+                        class="progress green"
+                        stroke-dasharray="'.(2*pi()*50).'"
+                        stroke-dashoffset="'.(2*pi()*50*(1-$submitted/100)).'"
+                    />
+
+                    <circle cx="60" cy="60" r="38"
+                        class="progress orange"
+                        stroke-dasharray="'.(2*pi()*38).'"
+                        stroke-dashoffset="'.(2*pi()*38*(1-$draft/100)).'"
+                    />
+
+                    <circle cx="60" cy="60" r="26"
+                        class="progress red"
+                        stroke-dasharray="'.(2*pi()*26).'"
+                        stroke-dashoffset="'.(2*pi()*26*(1-$pending/100)).'"
+                    />
+
+                </svg>
+
+                <div class="wb-ring-center">'.$submitted.'%</div>
             </div>
 
-            <div class="wb-student">
-                <div class="wb-avatar"></div>
-                <div class="wb-name">Mark Neil</div>
-                <div class="wb-score">87%</div>
+            <div class="wb-ring-title">'.format_string($a['name']).'</div>
+
+            <div class="wb-ring-legend">
+                <div><span class="dot green"></span> '.$submitted.'% Submitted</div>
+                <div><span class="dot orange"></span> '.$draft.'% Draft</div>
+                <div><span class="dot red"></span> '.$pending.'% Pending</div>
             </div>
 
-            <div class="wb-student">
-                <div class="wb-avatar"></div>
-                <div class="wb-name">Nenci Villy</div>
-                <div class="wb-score">85%</div>
-            </div>
+        </div>';
+    }
 
-            <div style="font-size:13px;color:#6b7280;margin-top:10px;">View All →</div>
+}
+
+echo '</div></div></div>';
+echo '</div>'; // grid
+
+echo '
+<script>
+function toggleAccordion(el) {
+    const parent = el.closest(".wb-accordion");
+
+    // close others (optional clean UX)
+    document.querySelectorAll(".wb-accordion").forEach(acc => {
+        if (acc !== parent) {
+            acc.classList.remove("active");
+        }
+    });
+
+    parent.classList.toggle("active");
+}
+function openTopStudentsModal() {
+    document.getElementById("topStudentsModal").style.display = "flex";
+}
+
+function closeTopStudentsModal() {
+    document.getElementById("topStudentsModal").style.display = "none";
+}
+</script>
+';
+echo '
+<div id="topStudentsModal" class="wb-modal">
+    <div class="wb-modal-content">
+        <div class="wb-modal-header">
+            <span>All Students Ranking</span>
+            <span class="wb-close" onclick="closeTopStudentsModal()">✖</span>
         </div>
 
+        <div class="wb-modal-body">';
+        
+        if (!empty($allstudents)) {
+            foreach ($allstudents as $stu) {
+                echo '
+                <div class="wb-student">
+                    <div class="wb-avatar">👤</div>
+                    <div class="wb-name">'.$stu['name'].'</div>
+                    <div class="wb-score">'.$stu['score'].'%</div>
+                </div>';
+            }
+        }
+
+echo '
+        </div>
     </div>
-
-    <!-- ROW 3 -->
-    <div class="wb-row">
-
-        <!-- PARTICIPATION -->
-        <div class="wb-panel">
-            <div style="font-weight:600;margin-bottom:10px;">Class Participation</div>
-
-            <div class="wb-progress">
-                <div class="wb-progress-title"><span>Assignment 1</span><span>85%</span></div>
-                <div class="wb-bar"><div class="wb-bar-fill" style="width:85%"></div></div>
-            </div>
-
-            <div class="wb-progress">
-                <div class="wb-progress-title"><span>Assignment 2</span><span>78%</span></div>
-                <div class="wb-bar"><div class="wb-bar-fill" style="width:78%"></div></div>
-            </div>
-
-            <div class="wb-progress">
-                <div class="wb-progress-title"><span>Assignment 3</span><span>92%</span></div>
-                <div class="wb-bar"><div class="wb-bar-fill" style="width:92%"></div></div>
-            </div>
-
-        </div>
-
-        <!-- METRICS -->
-        <div class="wb-panel">
-            <div style="font-weight:600;margin-bottom:10px;">Class Emotional Insights</div>
-
-            <div class="wb-metrics">
-
-                <div class="wb-metric">
-                    <div class="wb-metric-emoji">💫</div>
-                    <div class="wb-metric-text">I am a good person</div>
-                    <div class="wb-metric-val">78%</div>
-                </div>
-
-                <div class="wb-metric">
-                    <div class="wb-metric-emoji">🌱</div>
-                    <div class="wb-metric-text">I am optimistic</div>
-                    <div class="wb-metric-val">76%</div>
-                </div>
-
-                <div class="wb-metric">
-                    <div class="wb-metric-emoji">🤝</div>
-                    <div class="wb-metric-text">I feel supported</div>
-                    <div class="wb-metric-val">73%</div>
-                </div>
-
-                <div class="wb-metric">
-                    <div class="wb-metric-emoji">😊</div>
-                    <div class="wb-metric-text">I am happy</div>
-                    <div class="wb-metric-val">79%</div>
-                </div>
-
-            </div>
-        </div>
-
-    </div>
-
 </div>
 ';
 echo '<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>';
